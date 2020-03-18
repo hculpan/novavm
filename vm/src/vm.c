@@ -1,6 +1,8 @@
-#include "vm-file.h"
+#include "vm.h"
 
-int main(int argc, char *argv[])
+#include <stdio.h>
+
+bool vm_run(VmConfig *vm_config)
 {
-    print_message("Hello, world!");
+    return true;
 }
