@@ -1,5 +1,14 @@
-ICONST 1
-ICONST 2
-IADD
-IPRINT
-HALT
+# Loop 10x and print out n + 1 for each loop, with n = 100 at start
+.data
+        num     int     100
+        index   int     10
+
+.code
+start:
+        iadd    num, 1
+        iprint  num
+        isub    index, 1
+        jnz     start
+        halt
+
+        

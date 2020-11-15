@@ -1,6 +1,6 @@
 #include "vm-file.h"
 #include "vm.h"
-#include "bytecode.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,51 +63,53 @@ void process_args(int argc, char *argv[], VmConfig *vm_config)
 void free_vm_config(VmConfig *vm_config)
 {
     free(vm_config->filename);
+    free(vm_config->code);
+    free(vm_config->data);
+    free(vm_config);
 }
 
-void load_code(VmConfig *vm_config)
+void load_code_and_data(VmConfig *vm_config)
 {
-    if (vm_config->test)
+    FILE *finput;
+    finput = fopen(vm_config->filename, "rb");
+    if (!finput)
     {
-        puts("Loading test program");
-        uint8_t code_tmp[] = {
-            OPCODES[ICONST].opcode, 1, 0, 0, 0, // ICONST 1
-            OPCODES[ICONST].opcode, 2, 0, 0, 0, // ICONST 2
-            OPCODES[IADD].opcode,
-            OPCODES[HALT].opcode};
-        vm_config->code = malloc(sizeof(code_tmp));
-        vm_config->code_size = sizeof(code_tmp);
-        memcpy(vm_config->code, code_tmp, sizeof(uint8_t));
+        report_error("Unable to open file %s", vm_config->filename);
+        return;
     }
+    fseek(finput, 0l, SEEK_END);
+    vm_config->code_size = ftell(finput);
+    vm_config->code = malloc(vm_config->code_size);
+    fseek(finput, 0l, SEEK_SET);
+    fread(vm_config->code, sizeof(uint8_t), vm_config->code_size, finput);
+    fclose(finput);
+
+    vm_config->data = malloc(vm_config->data_size);
 }
 
 int main(int argc, char *argv[])
 {
     puts("NovaVM v0.0.1");
-    VmConfig vm_config = {NULL, 0, NULL, 1000000, false, false};
-    process_args(argc, argv, &vm_config);
+    VmConfig *vm_config = create_config();
+    process_args(argc, argv, vm_config);
 
-    if (!vm_config.filename && !vm_config.test)
+    if (!vm_config->filename && !vm_config->test)
     {
-        printf("Missing NVM file\n");
+        report_error("Missing NVM file");
         exit(0);
     }
     else
     {
-        load_code(&vm_config);
+        load_code_and_data(vm_config);
     }
 
-    if (vm_config.verbose_output)
-    {
-        puts("  Verbose output enabled");
-        printf("  Input file: %s\n", vm_config.filename);
-        printf("  Code size: %d\n", vm_config.code_size);
-        printf("  Data size: %d\n", vm_config.data_size);
-    }
+    if (had_errors)
+        exit(0);
 
-    vm_run(&vm_config);
+    if (!vm_run(vm_config))
+        puts("Exited with errors");
 
-    free_vm_config(&vm_config);
+    free_vm_config(vm_config);
 
     exit(0);
 }
